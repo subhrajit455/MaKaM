@@ -15,7 +15,7 @@ export const flightService = {
    * @returns {Promise<Object>} { traceId, results, ... }
    */
   async searchFlights(searchPayload) {
-    const response = await api.post(FlightAPI.FlightSearchApi, searchPayload);
+    const response = await api.post(FlightAPI.FlightSearchApi, searchPayload, { timeout: 65000 });
     return response?.data?.data || response?.data;
   },
 
@@ -102,6 +102,7 @@ export const flightService = {
     try {
       response = await api.post(FlightAPI.FlightBookApi, payload, {
         headers: getAuthHeaders(),
+        timeout: 120000,
       });
     } catch (err) {
       if (err?.response?.status === 404 || err?.response?.status === 405) {

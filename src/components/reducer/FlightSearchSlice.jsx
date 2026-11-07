@@ -8,7 +8,7 @@ export const fetchFlights = createAsyncThunk(
       const cleanParams = { ...searchParams };
       delete cleanParams?.forceRefresh;
 
-      const response = await api.post("/api/v1/flights/search", cleanParams);
+      const response = await api.post("/api/v1/flights/search", cleanParams, { timeout: 65000 });
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || error.message);

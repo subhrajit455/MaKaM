@@ -70,10 +70,12 @@ import {
  * @param {boolean} [props.disabled=false] - Whether uploads are disabled
  * @param {boolean} [props.showCustomerNotice=true] - Whether to show the customer fallback banner
  */
+const EMPTY_FILES = [];
+
 export default function CrmImageUploadSection({
   images = [],
   onChange,
-  files = [],
+  files = EMPTY_FILES,
   onFilesChange,
   section = "packages",
   itemId,
@@ -99,7 +101,7 @@ export default function CrmImageUploadSection({
   // Generate and cleanup object URLs for staged files (Path 2)
   useEffect(() => {
     if (!onFilesChange || !files || files.length === 0) {
-      setStagedPreviews([]);
+      setStagedPreviews((prev) => (prev.length === 0 ? prev : []));
       return;
     }
     const previews = files.map((file) => ({

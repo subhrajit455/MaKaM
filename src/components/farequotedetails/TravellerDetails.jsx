@@ -1484,18 +1484,45 @@ const TravellerDetails = ({
         const rawErr = bookErr?.response?.data?.details?.rawError || bookErr?.details?.rawError;
         const srdvCode = String(bookErr?.response?.data?.details?.srdvErrorCode || bookErr?.details?.srdvErrorCode || "");
         const isDuplicate = /duplicate\s+booking/i.test(errMsg);
+        const httpStatus = bookErr?.response?.status;
+        const isTimeoutOrDropped =
+          !bookErr?.response ||
+          bookErr?.code === "ECONNABORTED" ||
+          httpStatus === 502 ||
+          httpStatus === 504 ||
+          /timeout|network\s+error/i.test(errMsg);
 
-        if (isDuplicate) {
-          toast.info("Active reservation detected with supplier. Checking your bookings...");
+        if (isDuplicate || isTimeoutOrDropped) {
+          toast.info("Checking reservation status with airline...");
           try {
-            const myBookingsRes = await flightService.getMyBookings();
-            const bookingsList = myBookingsRes?.data || myBookingsRes?.bookings || (Array.isArray(myBookingsRes) ? myBookingsRes : []);
-            const matchingBooking = bookingsList.find(
-              (b) => String(b.traceId) === String(normalizedTraceId)
-            );
-            if (matchingBooking && (matchingBooking._id || matchingBooking.id)) {
-              bookRes = { bookingId: matchingBooking._id || matchingBooking.id, data: matchingBooking, ...matchingBooking };
-            } else {
+            for (let attempt = 0; attempt < (isTimeoutOrDropped ? 4 : 1); attempt++) {
+              if (attempt > 0) {
+                await new Promise((r) => setTimeout(r, 4000));
+              }
+              const myBookingsRes = await flightService.getMyFlightBookings();
+              const bookingsList =
+                myBookingsRes?.data ||
+                myBookingsRes?.bookings ||
+                (Array.isArray(myBookingsRes) ? myBookingsRes : []);
+              const matchingBooking = bookingsList.find(
+                (b) =>
+                  String(b.traceId) === String(normalizedTraceId) &&
+                  b.status !== "failed" &&
+                  b.status !== "cancelled"
+              );
+              if (matchingBooking && (matchingBooking._id || matchingBooking.id)) {
+                if (matchingBooking.status === "initiated" && attempt < 3) {
+                  continue;
+                }
+                bookRes = {
+                  bookingId: matchingBooking._id || matchingBooking.id,
+                  data: matchingBooking,
+                  ...matchingBooking,
+                };
+                break;
+              }
+            }
+            if (!bookRes) {
               throw bookErr;
             }
           } catch (lookupErr) {
