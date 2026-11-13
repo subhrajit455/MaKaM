@@ -202,20 +202,28 @@ export function parsePackageData(pkg) {
     }
   }
 
+  // Stored schedule fields
+  const storedDays = typeof pkg.durationDays === "number" ? pkg.durationDays : null;
+  const storedNights = typeof pkg.nights === "number" ? pkg.nights : null;
+
   // Duration derivation
-  let durationDays = 0;
-  if (pkg.validity?.from && pkg.validity?.to) {
+  let durationDays = storedDays ?? 0;
+  let nights = storedNights ?? (hotelInfo?.totalNights != null ? Number(hotelInfo.totalNights) : null);
+
+  if (!durationDays && pkg.validity?.from && pkg.validity?.to) {
     const fromTime = new Date(pkg.validity.from).getTime();
     const toTime = new Date(pkg.validity.to).getTime();
-    if (toTime > fromTime) {
-      durationDays = Math.max(1, Math.round((toTime - fromTime) / (1000 * 60 * 60 * 24)));
+    if (toTime >= fromTime) {
+      durationDays = Math.max(1, Math.round((toTime - fromTime) / (1000 * 60 * 60 * 24)) + 1);
     }
   }
 
   let durationText = pkg.duration;
   if (!durationText) {
-    if (durationDays > 0) {
-      durationText = `${durationDays} Days / ${Math.max(1, durationDays - 1)} Nights`;
+    if (durationDays > 0 && nights !== null) {
+      durationText = `${durationDays} Days / ${nights} Nights`;
+    } else if (durationDays > 0) {
+      durationText = `${durationDays} Days / ${Math.max(0, durationDays - 1)} Nights`;
     } else if (Array.isArray(pkg.itinerary) && pkg.itinerary.length > 0) {
       durationText = `${pkg.itinerary.length} Days Itinerary`;
     } else if (hotelInfo?.totalNights) {
@@ -224,6 +232,13 @@ export function parsePackageData(pkg) {
       durationText = "Flexible Tour";
     }
   }
+
+  // Booking deadline
+  const bookingDeadline = pkg.bookingDeadline ? new Date(pkg.bookingDeadline) : null;
+  const formattedBookingDeadline =
+    bookingDeadline && !isNaN(bookingDeadline.getTime())
+      ? bookingDeadline.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+      : null;
 
   // Validity Date Range
   const travelDates = formatDateRange(pkg.validity?.from, pkg.validity?.to);
@@ -310,6 +325,9 @@ export function parsePackageData(pkg) {
     isUrgentSlots,
     durationText,
     durationDays,
+    nights,
+    bookingDeadline,
+    formattedBookingDeadline,
     travelDates,
     flightInfo,
     hotelInfo,

@@ -44,15 +44,15 @@ export const packagesApi = {
 
   async getById(id) {
     if (!id) return null;
-    // GET /api/v1/packages/:id — public detail with priceBreakdown and
-    // availableAlternatives for the customizer. Falls back to the CRM
-    // detail route for packages the public endpoint does not expose.
+    // GET /api/v1/crm/packages/:id — admin detail with guide settings,
+    // cost analysis, offerRefs, priceBreakdown and availableAlternatives.
+    // Falls back to the public detail route if needed.
     try {
-      const { data } = await apiClient.get(`${PUBLIC_ROOT}/${id}`);
+      const { data } = await apiClient.get(`${CRM_ROOT}/${id}`);
       return withId(data?.package ?? data?.data ?? data);
     } catch (error) {
       if (error?.response?.status && error.response.status >= 500) throw error;
-      const { data } = await apiClient.get(`${CRM_ROOT}/${id}`);
+      const { data } = await apiClient.get(`${PUBLIC_ROOT}/${id}`);
       return withId(data?.package ?? data?.data ?? data);
     }
   },

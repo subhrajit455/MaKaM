@@ -1,4 +1,4 @@
-import { ArrowRight, BadgeCheck, CalendarDays, Hotel, ImageOff, Loader2, MapPin, Plane, Ticket, Users } from "lucide-react";
+import { ArrowRight, BadgeCheck, CalendarDays, Clock, Hotel, ImageOff, Loader2, MapPin, Plane, Ticket, Users } from "lucide-react";
 import PackageStatus from "./PackageStatus";
 import formatCurrency from "../../utils/formatCurrency";
 
@@ -13,8 +13,8 @@ export default function PackageCard({ packageItem, onOpen, onToggle, toggling = 
   const others = breakdown.filter((item) => item.itemType !== "flight" && item.itemType !== "hotel");
   const margin = pkg.profitMarginPercentage;
 
-  const nights = pkg.nights ?? hotels[0]?.details?.hotelDetails?.totalNights ?? null;
-  const days = pkg.durationDays ?? (nights ? Number(nights) + 1 : null);
+  const nights = pkg.nights != null ? pkg.nights : hotels[0]?.details?.hotelDetails?.totalNights ?? null;
+  const days = pkg.durationDays != null ? pkg.durationDays : (nights != null ? Number(nights) + 1 : null);
 
   return (
     <article
@@ -43,11 +43,16 @@ export default function PackageCard({ packageItem, onOpen, onToggle, toggling = 
             <p className="mt-0.5 flex items-center gap-1 text-xs text-slate-500">
               <MapPin size={12} />
               {pkg.destination || "Unknown destination"}
-              {days ? ` · ${days}D${nights ? `/${nights}N` : ""}` : ""}
+              {days ? ` · ${days}D${nights != null ? `/${nights}N` : ""}` : ""}
             </p>
           </div>
           <PackageStatus status={pkg.isActive === false ? "inactive" : pkg.status ?? "active"} />
         </div>
+        {pkg.isActive === false && pkg.inactivationReason && (
+          <p className="mt-1.5 rounded-lg bg-red-50 px-2 py-1 text-[11px] font-medium text-red-600">
+            {pkg.inactivationReason}
+          </p>
+        )}
 
         <div className="mt-3 flex flex-wrap gap-1.5">
           {pkg.guideActive && (
@@ -105,6 +110,13 @@ export default function PackageCard({ packageItem, onOpen, onToggle, toggling = 
             </p>
           </div>
         </div>
+
+        {pkg.bookingDeadline && (
+          <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-amber-700">
+            <Clock size={12} className="shrink-0 text-amber-600" />
+            <span>Bookable until {new Date(pkg.bookingDeadline).toLocaleDateString()}</span>
+          </div>
+        )}
 
         <div className="mt-auto flex items-center justify-between border-t border-slate-100 pt-3 text-xs text-slate-500">
           <span className="flex items-center gap-1.5">

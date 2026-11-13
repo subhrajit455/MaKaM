@@ -10,6 +10,7 @@ import Modal from "../../../components/common/Modal";
 import InventoryTable from "../../../components/inventory/InventoryTable";
 import StockOverviewMetrics from "../../../components/inventory/StockOverviewMetrics";
 import StockPagination from "../../../components/inventory/StockPagination";
+import DeleteStockModal from "../../../components/inventory/DeleteStockModal";
 
 import { hotelPropertiesApi, stocksApi } from "../stocks/stocksApi";
 import { settingsApi } from "../../settings/settingsApi";
@@ -143,10 +144,13 @@ export default function Hotels() {
 
   const [destination, setDestination] = useState("");
   const [debouncedDestination, setDebouncedDestination] = useState("");
+  const [isActive, setIsActive] = useState("");
+  const [stockToDelete, setStockToDelete] = useState(null);
   const [page, setPage] = useState(1);
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [selectedHotel, setSelectedHotel] = useState(null);
+  const [replacingCover, setReplacingCover] = useState(false);
   const [suggestOpen, setSuggestOpen] = useState(false);
 
   // Debounce the destination filter so typing does not spam the API.
@@ -167,9 +171,9 @@ export default function Hotels() {
   }, [form.hotelName]);
 
   const listQuery = useQuery({
-    queryKey: ["stocks", "hotels", { page, destination: debouncedDestination }],
+    queryKey: ["stocks", "hotels", { page, destination: debouncedDestination, isActive }],
     queryFn: () =>
-      stocksApi.listHotels({ page, limit: PAGE_SIZE, destination: debouncedDestination }),
+      stocksApi.listHotels({ page, limit: PAGE_SIZE, destination: debouncedDestination, isActive }),
     placeholderData: (previous) => previous,
   });
 
@@ -184,7 +188,7 @@ export default function Hotels() {
   // registered in the CRM so the admin can link stock to the existing property.
   const suggestQuery = useQuery({
     queryKey: ["hotels", "suggest", debouncedName],
-    queryFn: () => hotelPropertiesApi.list({ page: 1, limit: 10 }),
+    queryFn: () => hotelPropertiesApi.list({ page: 1, limit: 10, search: debouncedName }),
     enabled: modal && debouncedName.trim().length >= 2,
   });
 
@@ -205,22 +209,34 @@ export default function Hotels() {
     mutationFn: async () => {
       // 1) Link or register the hotel property. Selecting a suggestion uses
       //    the existing property; a new name registers one with the main
-      //    image and amenities. If the backend reports it already exists the
-      //    stock rows still link by name.
+      //    image, destination address, and amenities.
       let hotelId = selectedHotel ? (selectedHotel._id ?? selectedHotel.id) : null;
 
       if (!hotelId) {
-        try {
-          const created = await hotelPropertiesApi.create({
-            name: form.hotelName.trim(),
-            destination: form.destination.trim(),
-            images: form.mainImage ? [form.mainImage] : [],
-            amenities: form.amenities,
-          });
-          hotelId = created?._id ?? created?.id ?? null;
-        } catch (error) {
-          const status = error?.response?.status;
-          if (status !== 409 && status !== 400) throw error;
+        const created = await hotelPropertiesApi.create({
+          name: form.hotelName.trim(),
+          destination: form.destination.trim(),
+          address: form.destination.trim(),
+          images: form.mainImage ? [form.mainImage] : [],
+          amenities: form.amenities,
+        });
+        hotelId = created?._id ?? created?.id ?? null;
+      } else {
+        // If creating stock for an existing hotel: if form.mainImage was added or replaced,
+        // call hotelPropertiesApi.update so the image is saved to the hotel and never lost.
+        const originalCover = (selectedHotel.images ?? [])[0] || "";
+        const hotelUpdates = {};
+        if (form.mainImage && form.mainImage !== originalCover) {
+          hotelUpdates.images = [
+            form.mainImage,
+            ...(selectedHotel.images?.slice(1) || []),
+          ];
+        }
+        if ((!selectedHotel.amenities || selectedHotel.amenities.length === 0) && form.amenities?.length > 0) {
+          hotelUpdates.amenities = form.amenities;
+        }
+        if (Object.keys(hotelUpdates).length > 0) {
+          await hotelPropertiesApi.update(hotelId, hotelUpdates);
         }
       }
 
@@ -255,6 +271,7 @@ export default function Hotels() {
       setModal(false);
       setForm(emptyForm);
       setSelectedHotel(null);
+      setReplacingCover(false);
     },
     onError: (error) => {
       // Prefer the doc's 400 validation envelope ({ errors: [{ field, message }] })
@@ -296,18 +313,20 @@ export default function Hotels() {
 
   const selectHotel = (hotel) => {
     setSelectedHotel(hotel);
+    setReplacingCover(false);
     setSuggestOpen(false);
     setForm((previous) => ({
       ...previous,
       hotelName: hotel.name ?? hotel.hotelName ?? previous.hotelName,
       destination: previous.destination || hotel.destination || "",
-      mainImage: previous.mainImage || (hotel.images ?? [])[0] || "",
+      mainImage: (hotel.images ?? [])[0] || previous.mainImage || "",
       amenities: previous.amenities.length ? previous.amenities : (hotel.amenities ?? []),
     }));
   };
 
   const changeHotelName = (value) => {
     setSelectedHotel(null);
+    setReplacingCover(false);
     setSuggestOpen(true);
     setForm((previous) => ({ ...previous, hotelName: value }));
   };
@@ -370,13 +389,29 @@ export default function Hotels() {
       <StockOverviewMetrics side="hotels" />
 
       {/* Filter */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-4">
+      <div className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 sm:grid-cols-2">
         <Input
           label="Destination"
           placeholder="e.g. Goa, Dubai..."
           value={destination}
           onChange={(event) => setDestination(event.target.value)}
         />
+
+        <div>
+          <label className="mb-1 block text-xs font-semibold text-slate-600">Status</label>
+          <select
+            value={isActive}
+            onChange={(event) => {
+              setIsActive(event.target.value);
+              setPage(1);
+            }}
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-emerald-500"
+          >
+            <option value="">All</option>
+            <option value="true">Active</option>
+            <option value="false">Inactive</option>
+          </select>
+        </div>
       </div>
 
       {/* Stock contracts table */}
@@ -460,6 +495,40 @@ export default function Hotels() {
               ),
             },
             {
+              key: "nameAdditionDeadline",
+              label: "Name deadline",
+              render: (row) => formatDateTime(row.nameAdditionDeadline),
+            },
+            {
+              key: "status",
+              label: "Status",
+              render: (row) => {
+                const isExpired =
+                  row.isActive === false ||
+                  row.isExpired === true ||
+                  (row.nameAdditionDeadline &&
+                    new Date(row.nameAdditionDeadline) <= new Date());
+                return (
+                  <div>
+                    <span
+                      className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                        isExpired
+                          ? "bg-red-50 text-red-700"
+                          : "bg-emerald-50 text-emerald-700"
+                      }`}
+                    >
+                      {isExpired ? "Inactive" : "Active"}
+                    </span>
+                    {isExpired && (
+                      <p className="mt-0.5 text-[10px] text-red-500">
+                        {row.inactivationReason || "Deadline passed"}
+                      </p>
+                    )}
+                  </div>
+                );
+              },
+            },
+            {
               key: "rooms",
               label: "Rooms",
               render: (row) => (
@@ -511,6 +580,33 @@ export default function Hotels() {
               render: (row) => formatMoney(row.costPerUnit || (row.pricePerNight * (row.totalNights || 1))),
             },
           ]}
+          renderActions={(row) =>
+            row.canDelete ? (
+              <button
+                type="button"
+                onClick={() => setStockToDelete(row)}
+                className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold text-red-600 transition hover:bg-red-50 hover:text-red-700 cursor-pointer"
+                title="Delete stock"
+              >
+                <Trash2 size={13} />
+                <span>Delete</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() =>
+                  toast.info(
+                    "This hotel room allotment has booked units or customer bookings and cannot be deleted. You can deactivate it instead."
+                  )
+                }
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-400 cursor-not-allowed opacity-75"
+                title="Cannot delete: Stock has booked units or customer bookings"
+              >
+                <Trash2 size={13} />
+                <span>Delete</span>
+              </button>
+            )
+          }
         />
       )}
 
@@ -603,12 +699,61 @@ export default function Hotels() {
 
             {/* Main hotel image + hotel facilities */}
             <div className="mt-4 grid gap-4 md:grid-cols-2">
-              <ImagePicker
-                label="Main hotel image"
-                hint="Shown as the hotel cover across the CRM."
-                images={form.mainImage ? [form.mainImage] : []}
-                onChange={(images) => updateField("mainImage", images[0] ?? "")}
-              />
+              {selectedHotel && (selectedHotel.images ?? [])[0] && !replacingCover ? (
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="block text-sm font-semibold text-slate-700">Main hotel image</span>
+                    <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                      From hotel profile
+                    </span>
+                  </div>
+                  <p className="mt-0.5 text-xs text-slate-400">Reused from the linked hotel profile.</p>
+                  <div className="mt-2 flex items-center gap-3">
+                    <div className="relative h-20 w-28 overflow-hidden rounded-xl border border-slate-200">
+                      <img
+                        src={form.mainImage || selectedHotel.images[0]}
+                        alt="Hotel profile cover"
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="!px-3 !py-1.5 !text-xs"
+                      onClick={() => {
+                        setReplacingCover(true);
+                        updateField("mainImage", "");
+                      }}
+                    >
+                      Replace
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  {selectedHotel && (selectedHotel.images ?? [])[0] && (
+                    <div className="mb-1 flex items-center justify-between">
+                      <span className="block text-sm font-semibold text-slate-700">Main hotel image</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setReplacingCover(false);
+                          updateField("mainImage", selectedHotel.images[0]);
+                        }}
+                        className="text-xs font-semibold text-emerald-700 hover:text-emerald-800"
+                      >
+                        Keep profile image
+                      </button>
+                    </div>
+                  )}
+                  <ImagePicker
+                    label={!selectedHotel || !(selectedHotel.images ?? [])[0] ? "Main hotel image" : undefined}
+                    hint="Shown as the hotel cover across the CRM."
+                    images={form.mainImage ? [form.mainImage] : []}
+                    onChange={(images) => updateField("mainImage", images[0] ?? "")}
+                  />
+                </div>
+              )}
 
               <div>
                 <span className="mb-1.5 block text-sm font-semibold text-slate-700">
@@ -775,6 +920,18 @@ export default function Hotels() {
           </div>
         </form>
       </Modal>
+
+      {/* Delete Never-Booked Hotel Stock Modal */}
+      <DeleteStockModal
+        open={Boolean(stockToDelete)}
+        stock={stockToDelete}
+        type="hotel"
+        onClose={() => setStockToDelete(null)}
+        onDeleted={() => {
+          queryClient.invalidateQueries({ queryKey: ["stocks"] });
+          setStockToDelete(null);
+        }}
+      />
     </div>
   );
 }

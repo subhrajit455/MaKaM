@@ -4,9 +4,12 @@ import Button from "../../common/Button";
 
 const ROLES = [
   "flight_departure",
+  "flight_arrival",
   "flight_return",
+  "hotel_stay",
   "hotel_checkin",
   "hotel_checkout",
+  "guide_tour",
   "transfer",
   "activity",
   "meal",

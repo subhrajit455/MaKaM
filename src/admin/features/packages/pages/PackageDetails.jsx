@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import {
-  ArrowLeft, BadgeCheck, Edit3, Globe, Hotel, Images,
+  ArrowLeft, BadgeCheck, CalendarDays, Edit3, Globe, Hotel, Images,
   MapPin, Percent, Plane, Receipt, Ticket, Users, X,
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -43,7 +43,13 @@ export default function PackageDetails() {
   const breakdown = pkg.priceBreakdown ?? [];
   const cover = (pkg.images ?? []).find((url) => typeof url === "string" && url);
   const margin = pkg.profitMarginPercentage ?? (pkg.totalCostPrice && pkg.sellPrice ? ((pkg.grossProfit / pkg.sellPrice) * 100).toFixed(1) : null);
-  const unbundledTotal = breakdown.reduce((sum, item) => sum + Number(item.totalRetail ?? item.retailPrice ?? 0), 0);
+  const unbundledTotal = breakdown.reduce(
+    (sum, item) =>
+      item.isOptional && item.isDefaultSelected === false
+        ? sum
+        : sum + Number(item.totalRetail ?? item.retailPrice ?? 0),
+    0,
+  );
 
   return (
     <div className="space-y-5 animate-slide-in">
@@ -232,11 +238,17 @@ export default function PackageDetails() {
             </div>
           </Section>
 
-          {(pkg.validity?.from || pkg.validity?.to) && (
-            <Section title="Validity" icon={Percent}>
+          {(pkg.validity?.from || pkg.validity?.to || pkg.bookingDeadline || pkg.durationDays != null) && (
+            <Section title="Schedule" icon={CalendarDays}>
               <div className="space-y-3">
-                {pkg.validity?.from && <Info label="From" value={new Date(pkg.validity.from).toLocaleDateString()} />}
-                {pkg.validity?.to && <Info label="To" value={new Date(pkg.validity.to).toLocaleDateString()} />}
+                {pkg.validity?.from && <Info label="Travel from" value={new Date(pkg.validity.from).toLocaleDateString()} />}
+                {pkg.validity?.to && <Info label="Travel to" value={new Date(pkg.validity.to).toLocaleDateString()} />}
+                {pkg.durationDays != null && (
+                  <Info label="Duration" value={`${pkg.durationDays} Days / ${pkg.nights ?? 0} Nights`} />
+                )}
+                {pkg.bookingDeadline && (
+                  <Info label="Bookable until" value={new Date(pkg.bookingDeadline).toLocaleDateString()} />
+                )}
               </div>
             </Section>
           )}

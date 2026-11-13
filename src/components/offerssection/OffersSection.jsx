@@ -28,9 +28,9 @@ const FALLBACK_HOTEL_OFFERS = [
     rating: 4.9,
     availableBookings: 3,
     images: [
-      "https://res.cloudinary.com/dsszjlw3u/image/upload/v1790840888/travel-agency/offers/wvsjb9p0ldwzd7yev8i3.jpg",
-      "https://res.cloudinary.com/dsszjlw3u/image/upload/v1790840917/travel-agency/offers/swvlzb0klyhjiyibdzwa.jpg",
-      "https://res.cloudinary.com/dsszjlw3u/image/upload/v1790840916/travel-agency/offers/u4clgddeew8wozhiw6i0.jpg",
+      "https://apibucket.vais.co.in/uploads/users/69848ef69f17d45215814fa1/2026/11/1794037063210-b1e9e435-f1d5-4869-a09b-d7fffd2c184d-wvsjb9p0ldwzd7yev8i3.jpg",
+      "https://apibucket.vais.co.in/uploads/users/69848ef69f17d45215814fa1/2026/11/1794037063647-56cc67e4-2cdd-4016-9882-d7bf8cf9f68e-swvlzb0klyhjiyibdzwa.jpg",
+      "https://apibucket.vais.co.in/uploads/users/69848ef69f17d45215814fa1/2026/11/1794037063988-070345fa-b233-4d15-bd09-9ba2596f8b02-u4clgddeew8wozhiw6i0.jpg",
     ],
     hotelRef: {
       stock: {
@@ -55,9 +55,9 @@ const FALLBACK_HOTEL_OFFERS = [
     rating: 4.8,
     availableBookings: 11,
     images: [
-      "https://res.cloudinary.com/dsszjlw3u/image/upload/v1790840562/travel-agency/offers/hbrlrmrnkpd0nyrxkisx.jpg",
-      "https://res.cloudinary.com/dsszjlw3u/image/upload/v1790840577/travel-agency/offers/nihhggueuusxn1d88evn.jpg",
-      "https://res.cloudinary.com/dsszjlw3u/image/upload/v1790840578/travel-agency/offers/qyeuzsndxwdg56egpwcd.jpg",
+      "https://apibucket.vais.co.in/uploads/users/69848ef69f17d45215814fa1/2026/11/1794037065142-06d6d280-77a5-46b4-89cb-b3e41e7dc8f9-hbrlrmrnkpd0nyrxkisx.jpg",
+      "https://apibucket.vais.co.in/uploads/users/69848ef69f17d45215814fa1/2026/11/1794037065437-091c3c67-4e3a-457f-b8a5-202964bb6e5f-nihhggueuusxn1d88evn.jpg",
+      "https://apibucket.vais.co.in/uploads/users/69848ef69f17d45215814fa1/2026/11/1794037065750-5b251625-75ae-4b3c-bbbe-be3cdfe4cba1-qyeuzsndxwdg56egpwcd.jpg",
     ],
     hotelRef: {
       stock: {
@@ -82,9 +82,9 @@ const FALLBACK_HOTEL_OFFERS = [
     rating: 4.7,
     availableBookings: 10,
     images: [
-      "https://res.cloudinary.com/dsszjlw3u/image/upload/v1790840220/travel-agency/offers/wbsbra1fkqr3opozbmmi.jpg",
-      "https://res.cloudinary.com/dsszjlw3u/image/upload/v1790840228/travel-agency/offers/xxnmi6auyvgz6ebwrxn8.jpg",
-      "https://res.cloudinary.com/dsszjlw3u/image/upload/v1790840229/travel-agency/offers/xwy6ma1dihpw4eynyypu.jpg",
+      "https://apibucket.vais.co.in/uploads/users/69848ef69f17d45215814fa1/2026/11/1794037066022-4a33547d-7f2c-4380-ae18-c5dc83cea1ab-wbsbra1fkqr3opozbmmi.jpg",
+      "https://apibucket.vais.co.in/uploads/users/69848ef69f17d45215814fa1/2026/11/1794037066328-63ef0b68-5fcc-4df5-bfbf-f9b42813d177-xxnmi6auyvgz6ebwrxn8.jpg",
+      "https://apibucket.vais.co.in/uploads/users/69848ef69f17d45215814fa1/2026/11/1794037066618-73063104-0853-4f6a-843b-1414f86052fc-xwy6ma1dihpw4eynyypu.jpg",
     ],
     hotelRef: {
       stock: {
@@ -109,9 +109,9 @@ const FALLBACK_HOTEL_OFFERS = [
     rating: 4.6,
     availableBookings: 8,
     images: [
-      "https://res.cloudinary.com/dsszjlw3u/image/upload/v1790750108/travel-agency/offers/b7d0ksh0ae7uohvt1xro.jpg",
-      "https://res.cloudinary.com/dsszjlw3u/image/upload/v1790750117/travel-agency/offers/blrxe0pwnbri76uow8db.jpg",
-      "https://res.cloudinary.com/dsszjlw3u/image/upload/v1790750117/travel-agency/offers/mwoihjiax2aejh23l7gd.jpg",
+      "https://apibucket.vais.co.in/uploads/users/69848ef69f17d45215814fa1/2026/11/1794037066874-a5b25cc8-ec4d-4638-9170-bccd89aeb99b-b7d0ksh0ae7uohvt1xro.jpg",
+      "https://apibucket.vais.co.in/uploads/users/69848ef69f17d45215814fa1/2026/11/1794037067174-ceeca750-9729-40a8-a0f2-e1dd5f94b9f1-blrxe0pwnbri76uow8db.jpg",
+      "https://apibucket.vais.co.in/uploads/users/69848ef69f17d45215814fa1/2026/11/1794037067500-2e077412-e192-4f79-a836-ef064a1bc38d-mwoihjiax2aejh23l7gd.jpg",
     ],
     hotelRef: {
       stock: {

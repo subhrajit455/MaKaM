@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, RotateCw, Plane } from "lucide-react";
+import { Plus, RotateCw, Plane, Trash2 } from "lucide-react";
 import { toast } from "react-toastify";
 
 import PageHeader from "../../../components/layout/PageHeader";
@@ -11,6 +11,7 @@ import InventoryTable from "../../../components/inventory/InventoryTable";
 import StockOverviewMetrics from "../../../components/inventory/StockOverviewMetrics";
 import StockPagination from "../../../components/inventory/StockPagination";
 import StockModal from "../../../components/inventory/StockModal";
+import DeleteStockModal from "../../../components/inventory/DeleteStockModal";
 
 import { stocksApi } from "../stocks/stocksApi";
 import { settingsApi } from "../../settings/settingsApi";
@@ -23,6 +24,7 @@ const emptyFilters = {
   origin: "",
   destination: "",
   pnr: "",
+  isActive: "",
 };
 
 const toIso = (value) => {
@@ -62,6 +64,7 @@ export default function TicketStock() {
   // API matrix; fetches the full batch with individual seat units).
   const [detailId, setDetailId] = useState(null);
   const [previewBoardingPass, setPreviewBoardingPass] = useState(false);
+  const [stockToDelete, setStockToDelete] = useState(null);
 
   const detailQuery = useQuery({
     queryKey: ["stocks", "flights", "detail", detailId],
@@ -165,7 +168,7 @@ export default function TicketStock() {
       <StockOverviewMetrics side="flights" />
 
       {/* Filters */}
-      <div className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <Input
           label="Airline"
           placeholder="e.g. IndiGo"
@@ -193,6 +196,19 @@ export default function TicketStock() {
           value={filters.pnr}
           onChange={updateFilter("pnr")}
         />
+
+        <div>
+          <label className="mb-1 block text-xs font-semibold text-slate-600">Status</label>
+          <select
+            value={filters.isActive}
+            onChange={updateFilter("isActive")}
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-emerald-500"
+          >
+            <option value="">All</option>
+            <option value="true">Active</option>
+            <option value="false">Inactive</option>
+          </select>
+        </div>
       </div>
 
       {/* Table */}
@@ -248,6 +264,35 @@ export default function TicketStock() {
               render: (row) => formatDate(row.nameAdditionDeadline),
             },
             {
+              key: "status",
+              label: "Status",
+              render: (row) => {
+                const isExpired =
+                  row.isActive === false ||
+                  row.isExpired === true ||
+                  (row.nameAdditionDeadline &&
+                    new Date(row.nameAdditionDeadline) <= new Date());
+                return (
+                  <div>
+                    <span
+                      className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                        isExpired
+                          ? "bg-red-50 text-red-700"
+                          : "bg-emerald-50 text-emerald-700"
+                      }`}
+                    >
+                      {isExpired ? "Inactive" : "Active"}
+                    </span>
+                    {isExpired && (
+                      <p className="mt-0.5 text-[10px] text-red-500">
+                        {row.inactivationReason || "Deadline passed"}
+                      </p>
+                    )}
+                  </div>
+                );
+              },
+            },
+            {
               key: "seats",
               label: "Seats",
               render: (row) => (
@@ -294,6 +339,33 @@ export default function TicketStock() {
               },
             },
           ]}
+          renderActions={(row) =>
+            row.canDelete ? (
+              <button
+                type="button"
+                onClick={() => setStockToDelete(row)}
+                className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold text-red-600 transition hover:bg-red-50 hover:text-red-700 cursor-pointer"
+                title="Delete stock"
+              >
+                <Trash2 size={13} />
+                <span>Delete</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() =>
+                  toast.info(
+                    "This flight stock has booked units or customer bookings and cannot be deleted. You can deactivate it instead."
+                  )
+                }
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-400 cursor-not-allowed opacity-75"
+                title="Cannot delete: Stock has booked units or customer bookings"
+              >
+                <Trash2 size={13} />
+                <span>Delete</span>
+              </button>
+            )
+          }
         />
       )}
 
@@ -444,6 +516,18 @@ export default function TicketStock() {
             seatNumber: "3F",
           },
         ]}
+      />
+
+      {/* Delete Never-Booked Flight Stock Modal */}
+      <DeleteStockModal
+        open={Boolean(stockToDelete)}
+        stock={stockToDelete}
+        type="flight"
+        onClose={() => setStockToDelete(null)}
+        onDeleted={() => {
+          queryClient.invalidateQueries({ queryKey: ["stocks"] });
+          setStockToDelete(null);
+        }}
       />
     </div>
   );

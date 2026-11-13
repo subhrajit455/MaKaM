@@ -24,6 +24,7 @@ import {
   Shield,
   Layers,
   Percent,
+  Trash2,
 } from "lucide-react";
 import { toast } from "react-toastify";
 
@@ -35,6 +36,7 @@ import InventoryTable from "../../../components/inventory/InventoryTable";
 import StockPagination from "../../../components/inventory/StockPagination";
 import StatusBadge from "../../../components/common/StatusBadge";
 import CrmImageUploadSection from "../../../components/common/CrmImageUploadSection";
+import DeleteOfferModal from "../../../components/offers/DeleteOfferModal";
 
 import { offersApi } from "../offersApi";
 import { stocksApi } from "../../inventory/stocks/stocksApi";
@@ -174,6 +176,9 @@ export default function Offers() {
   const [editTarget, setEditTarget] = useState(null);
   const [editForm, setEditForm] = useState(emptyOfferForm);
 
+  // Deletion state
+  const [offerToDelete, setOfferToDelete] = useState(null);
+
   // Book-for-customer state
   const [bookForm, setBookForm] = useState({
     customerId: "",
@@ -311,7 +316,12 @@ export default function Offers() {
       sellPrice: String(row.sellPrice ?? ""),
       originalPrice: String(row.originalPrice ?? ""),
       discountPercentage: String(row.discountPercentage ?? ""),
-      unitsPerBooking: String(row.unitsPerBooking ?? 1),
+      unitsPerBooking: String(
+        row.flightRef?.unitsPerBooking ??
+          row.hotelRef?.unitsPerBooking ??
+          row.unitsPerBooking ??
+          1
+      ),
       startDate: row.startDate ? row.startDate.slice(0, 16) : "",
       endDate: row.endDate ? row.endDate.slice(0, 16) : "",
       inclusions: Array.isArray(row.inclusions)
@@ -376,7 +386,7 @@ export default function Offers() {
       inclusions: editForm.inclusions.split("\n").map((line) => line.trim()).filter(Boolean),
       startDate: toIso(editForm.startDate),
       endDate: toIso(editForm.endDate),
-      termsAndConditions: editForm.termsAndConditions.trim() || undefined,
+      termsAndConditions: editForm.termsAndConditions.trim(),
     };
     if (editForm.stock) {
       payload[refKey] = {
@@ -643,6 +653,7 @@ export default function Offers() {
   }, [editTarget, selectedEditStock, editDetailQuery.data]);
 
   const editStockWholesaleCost = useMemo(() => {
+    const units = Math.max(1, Number(editForm.unitsPerBooking || 1));
     if (activeEditStock) {
       const cost =
         activeEditStock.costPerUnit ??
@@ -652,13 +663,13 @@ export default function Offers() {
         activeEditStock.pricePerNight ??
         activeEditStock.price ??
         0;
-      if (Number(cost) > 0) return Number(cost);
+      if (Number(cost) > 0) return Number(cost) * units;
     }
     if (editDetailQuery.data?.costPrice) {
       return Number(editDetailQuery.data.costPrice);
     }
     return 0;
-  }, [activeEditStock, editDetailQuery.data]);
+  }, [activeEditStock, editDetailQuery.data, editForm.unitsPerBooking]);
 
   const editLiveMarginCalc = useMemo(() => {
     const sell = Number(editForm.sellPrice || 0);
@@ -955,15 +966,22 @@ export default function Offers() {
               key: "status",
               label: "Status",
               render: (row) => (
-                <button
-                  type="button"
-                  title={`Click to ${row.isActive ? "pause" : "activate"} offer`}
-                  onClick={() => toggleStatusMutation.mutate(row.id)}
-                  disabled={toggleStatusMutation.isPending}
-                  className="transition hover:scale-105 active:scale-95 disabled:opacity-50"
-                >
-                  <StatusBadge status={row.isActive ? "Active" : "Inactive"} />
-                </button>
+                <div>
+                  <button
+                    type="button"
+                    title={`Click to ${row.isActive ? "pause" : "activate"} offer`}
+                    onClick={() => toggleStatusMutation.mutate(row.id)}
+                    disabled={toggleStatusMutation.isPending}
+                    className="transition hover:scale-105 active:scale-95 disabled:opacity-50"
+                  >
+                    <StatusBadge status={row.isActive ? "Active" : "Inactive"} />
+                  </button>
+                  {!row.isActive && (row.inactivationReason || row.isStockExpired) && (
+                    <p className="mt-0.5 text-[10px] text-red-500">
+                      {row.inactivationReason || "Stock deadline passed"}
+                    </p>
+                  )}
+                </div>
               ),
             },
           ]}
@@ -990,6 +1008,33 @@ export default function Offers() {
                 <Wallet size={16} />
                 Book
               </Button>
+              {row.canDelete !== false ? (
+                <button
+                  type="button"
+                  onClick={() => setOfferToDelete(row)}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50/60 px-3 py-2 text-xs font-semibold text-red-600 transition hover:bg-red-100 hover:text-red-700 cursor-pointer"
+                  title="Delete unbooked offer"
+                >
+                  <Trash2 size={15} />
+                  <span>Delete</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() =>
+                    toast.info(
+                      row.cannotDeleteReason
+                        ? `Cannot delete offer: ${row.cannotDeleteReason}. You can deactivate it instead.`
+                        : "This offer has customer bookings or is bundled in a package and cannot be deleted. You can deactivate it instead."
+                    )
+                  }
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-400 cursor-not-allowed opacity-75"
+                  title={row.cannotDeleteReason || "Cannot delete offer with bookings or linked packages"}
+                >
+                  <Trash2 size={15} />
+                  <span>Delete</span>
+                </button>
+              )}
             </div>
           )}
         />
@@ -2367,6 +2412,16 @@ export default function Offers() {
           </div>
         </form>
       </Modal>
+
+      {/* Delete Retail Offer Modal */}
+      <DeleteOfferModal
+        open={Boolean(offerToDelete)}
+        offer={offerToDelete}
+        onClose={() => setOfferToDelete(null)}
+        onDeleted={() => {
+          queryClient.invalidateQueries({ queryKey: ["offers"] });
+        }}
+      />
     </div>
   );
 }

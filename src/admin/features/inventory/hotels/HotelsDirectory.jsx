@@ -10,10 +10,11 @@ import Modal from "../../../components/common/Modal";
 import { crmApi } from "../../crm/crmApi";
 import { Pill, Field, inputClass, FormActions } from "../../crm/crmUi";
 import { stocksApi } from "../stocks/stocksApi";
+import ImagePicker from "./ImagePicker";
 
 const PAGE_SIZE = 20;
 
-const emptyAdd = { name: "", destination: "", address: "", starRating: "5" };
+const emptyAdd = { name: "", destination: "", address: "", starRating: "5", images: [] };
 
 const firstCover = (hotel) =>
   (hotel?.images ?? []).find((url) => typeof url === "string" && url) || null;
@@ -91,6 +92,7 @@ export default function HotelsDirectory() {
         destination: addForm.destination.trim(),
         address: addForm.address.trim() || undefined,
         starRating: Number(addForm.starRating || 5),
+        images: addForm.images || [],
       });
       toast.success("Hotel created");
       setAddOpen(false);
@@ -271,6 +273,16 @@ export default function HotelsDirectory() {
               <Field label="Address">
                 <input className={inputClass} placeholder="Abraj Al Bait Complex, Makkah" value={addForm.address} onChange={(e) => setAddForm({ ...addForm, address: e.target.value })} />
               </Field>
+            </div>
+            <div className="md:col-span-2">
+              <ImagePicker
+                label="Hotel Images"
+                hint="First image is used as the cover photo across the CRM."
+                images={addForm.images || []}
+                onChange={(images) => setAddForm({ ...addForm, images })}
+                multiple
+                max={6}
+              />
             </div>
             <Field label="Star Rating">
               <select className={inputClass} value={addForm.starRating} onChange={(e) => setAddForm({ ...addForm, starRating: e.target.value })}>

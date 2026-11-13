@@ -102,4 +102,12 @@ export const offersApi = {
   async deleteImage(id, imageUrl) {
     return deleteEntityImage("offers", id, imageUrl);
   },
+
+  // DELETE /api/v1/crm/offers/:id — delete unbooked offer (supports ?dryRun=true)
+  async delete(id, { dryRun = false } = {}) {
+    const { data } = await apiClient.delete(`${CRM_ROOT}/${id}`, {
+      params: dryRun ? { dryRun: true } : undefined,
+    });
+    return data?.data ?? data;
+  },
 };

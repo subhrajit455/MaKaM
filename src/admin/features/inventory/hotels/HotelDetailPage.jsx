@@ -13,8 +13,9 @@ import LoadingSpinner from "../../../components/common/LoadingSpinner";
 import { crmApi } from "../../crm/crmApi";
 import { Pill, Field, inputClass, FormActions } from "../../crm/crmUi";
 import { stocksApi } from "../stocks/stocksApi";
+import ImagePicker from "./ImagePicker";
 
-const emptyEdit = { name: "", destination: "", address: "", isActive: true };
+const emptyEdit = { name: "", destination: "", address: "", images: [], isActive: true };
 
 const formatDateTime = (value) =>
   value
@@ -120,6 +121,7 @@ export default function HotelDetailPage() {
       name: hotel?.name ?? "",
       destination: hotel?.destination ?? "",
       address: hotel?.address ?? "",
+      images: hotel?.images ?? [],
       isActive: hotel?.isActive !== false,
     });
     setEditing(true);
@@ -162,6 +164,7 @@ export default function HotelDetailPage() {
       name: editForm.name.trim(),
       destination: editForm.destination.trim(),
       address: editForm.address.trim() || undefined,
+      images: editForm.images || [],
       isActive: editForm.isActive,
     });
   };
@@ -274,6 +277,16 @@ export default function HotelDetailPage() {
               <Field label="Address">
                 <input className={inputClass} placeholder="Abraj Al Bait Complex, Makkah" value={editForm.address} onChange={(e) => setEditForm({ ...editForm, address: e.target.value })} />
               </Field>
+            </div>
+            <div className="md:col-span-2">
+              <ImagePicker
+                label="Hotel Images"
+                hint="First image is used as the cover photo across the CRM."
+                images={editForm.images || []}
+                onChange={(images) => setEditForm({ ...editForm, images })}
+                multiple
+                max={6}
+              />
             </div>
             <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
               <input type="checkbox" checked={editForm.isActive} onChange={(e) => setEditForm({ ...editForm, isActive: e.target.checked })} className="h-4 w-4 rounded border-slate-300 accent-emerald-700" />

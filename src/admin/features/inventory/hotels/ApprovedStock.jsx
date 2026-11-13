@@ -122,6 +122,35 @@ export default function ApprovedStock() {
                   .map((meal) => meal.charAt(0).toUpperCase() + meal.slice(1))
                   .join(", ") || "—",
             },
+            {
+              key: "status",
+              label: "Status",
+              render: (row) => {
+                const isExpired =
+                  row.isActive === false ||
+                  row.isExpired === true ||
+                  (row.nameAdditionDeadline &&
+                    new Date(row.nameAdditionDeadline) <= new Date());
+                return (
+                  <div>
+                    <span
+                      className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                        isExpired
+                          ? "bg-red-50 text-red-700"
+                          : "bg-emerald-50 text-emerald-700"
+                      }`}
+                    >
+                      {isExpired ? "Inactive" : "Active"}
+                    </span>
+                    {isExpired && (
+                      <p className="mt-0.5 text-[10px] text-red-500">
+                        {row.inactivationReason || "Deadline passed"}
+                      </p>
+                    )}
+                  </div>
+                );
+              },
+            },
           ]}
         />
       )}

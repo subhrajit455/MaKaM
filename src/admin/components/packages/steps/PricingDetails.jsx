@@ -1,9 +1,10 @@
 import formatCurrency from "../../../utils/formatCurrency";
+import ScheduleSummaryCard from "../ScheduleSummaryCard";
 
 // Step 3 of the package builder: bundle discount. Sell price is computed
 // from the selected offers' retail prices minus the discount (spec 3.1);
 // the server recomputes and returns the authoritative figures on create.
-export default function PricingDetails({ form, setField, unbundledTotal }) {
+export default function PricingDetails({ form, setField, unbundledTotal, schedule }) {
   const discount = Math.min(Math.max(Number(form.bundleDiscountPercentage || 0), 0), 100);
   const sellPrice = Math.round(unbundledTotal * (1 - discount / 100));
   // Guide is priced on top of the bundle (spec B: final = sell + guidePrice).
@@ -11,9 +12,12 @@ export default function PricingDetails({ form, setField, unbundledTotal }) {
   const total = sellPrice + guidePrice;
 
   // Wholesale cost sum and profit margin
-  const totalCost = form.offers.reduce((sum, o) => sum + Number(o.costPrice || 0), 0);
-  const grossProfit = totalCost > 0 ? (sellPrice - totalCost) : Math.max(0, unbundledTotal - sellPrice);
-  const marginPct = sellPrice > 0 && totalCost > 0 ? Math.round(((sellPrice - totalCost) / sellPrice) * 100) : null;
+  const totalCost = form.offers.reduce((sum, o) => {
+    if (o.isOptional && o.isDefaultSelected === false) return sum;
+    return sum + Number(o.costPrice || 0) * Number(o.unitsPerBooking || 1);
+  }, 0);
+  const grossProfit = totalCost > 0 ? (total - totalCost) : Math.max(0, unbundledTotal - sellPrice);
+  const marginPct = total > 0 && totalCost > 0 ? Math.round(((total - totalCost) / total) * 100) : null;
 
   return (
     <div className="space-y-5">
@@ -24,6 +28,8 @@ export default function PricingDetails({ form, setField, unbundledTotal }) {
           discount. Admin view displays full transparency into wholesale costs and profit margins.
         </p>
       </div>
+
+      <ScheduleSummaryCard schedule={schedule} />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Metric label="Unbundled Retail Total" value={formatCurrency(unbundledTotal)} hint="Sum of offer retail prices" />
@@ -99,17 +105,21 @@ export default function PricingDetails({ form, setField, unbundledTotal }) {
         <div className="rounded-2xl border border-slate-200">
           <div className="border-b border-slate-100 px-4 py-3 text-sm font-bold text-slate-800">Price breakdown</div>
           <div className="divide-y divide-slate-100">
-            {form.offers.map((offer) => (
-              <div key={offer.offerId} className="flex items-center justify-between px-4 py-3 text-sm">
-                <span className="flex items-center gap-2 text-slate-700">
-                  <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase ${offer.itemType === "flight" ? "bg-sky-100 text-sky-700" : "bg-amber-100 text-amber-700"}`}>
-                    {offer.itemType}
+            {form.offers.map((offer) => {
+              const units = Number(offer.unitsPerBooking || 1);
+              return (
+                <div key={offer.offerId || offer.id} className="flex items-center justify-between px-4 py-3 text-sm">
+                  <span className="flex items-center gap-2 text-slate-700">
+                    <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase ${offer.itemType === "flight" ? "bg-sky-100 text-sky-700" : "bg-amber-100 text-amber-700"}`}>
+                      {offer.itemType}
+                    </span>
+                    {offer.title}
+                    {units > 1 && <span className="text-xs text-slate-400">× {units}</span>}
                   </span>
-                  {offer.title}
-                </span>
-                <span className="font-bold text-slate-800">{formatCurrency(offer.sellPrice)}</span>
-              </div>
-            ))}
+                  <span className="font-bold text-slate-800">{formatCurrency(Number(offer.sellPrice || 0) * units)}</span>
+                </div>
+              );
+            })}
             {discount > 0 && (
               <div className="flex items-center justify-between px-4 py-3 text-sm">
                 <span className="text-slate-700">Bundle discount ({discount}%)</span>

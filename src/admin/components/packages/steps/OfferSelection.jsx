@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Check, Plus, Search, Ticket, Hotel } from "lucide-react";
+import { Calendar, Check, Clock, Plus, Search, Ticket, Hotel } from "lucide-react";
 import Button from "../../common/Button";
 import formatCurrency from "../../../utils/formatCurrency";
+import { formatDate } from "../../../utils/formatDate";
 import { offersApi } from "../../../features/offers/offersApi";
 
 // Step 2 of the package builder: pick the retail offers to bundle.
@@ -26,16 +27,36 @@ export default function OfferSelection({ form, setField }) {
 
   const offers = offersQuery.data?.offers ?? [];
 
-  const selectedIds = useMemo(() => new Set(form.offers.map((o) => o.offerId)), [form.offers]);
+  const selectedIds = useMemo(() => new Set(form.offers.map((o) => String(o.offerId))), [form.offers]);
+
+  const getOfferDeadline = (o) => {
+    const s = o.itemType === "flight" ? o.flightRef?.stock : o.hotelRef?.stock;
+    return o.nameAdditionDeadline || s?.nameAdditionDeadline || null;
+  };
+
+  const getOfferDatesSummary = (o) => {
+    const s = o.itemType === "flight" ? o.flightRef?.stock : o.hotelRef?.stock;
+    const start = s?.departureDate || s?.checkIn || o.startDate;
+    const end = s?.arrivalDate || s?.checkOut || o.endDate;
+    if (start && end && String(start).slice(0, 10) !== String(end).slice(0, 10)) {
+      return `${formatDate(start, { day: "numeric", month: "short" })} – ${formatDate(end, { day: "numeric", month: "short", year: "numeric" })}`;
+    }
+    if (start) {
+      return formatDate(start, { day: "numeric", month: "short", year: "numeric" });
+    }
+    return null;
+  };
 
   const toggle = (offer) => {
-    const offerId = offer._id ?? offer.id;
+    const offerId = String(offer._id ?? offer.id);
     if (selectedIds.has(offerId)) {
-      setField("offers", form.offers.filter((o) => o.offerId !== offerId));
+      setField("offers", form.offers.filter((o) => String(o.offerId) !== offerId));
     } else {
+      const deadline = getOfferDeadline(offer);
       setField("offers", [
         ...form.offers,
         {
+          id: offerId,
           offerId,
           title: offer.title,
           itemType: offer.itemType,
@@ -45,13 +66,29 @@ export default function OfferSelection({ form, setField }) {
           destination: offer.destination,
           unitsPerBooking: 1,
           isOptional: false,
+          isDefaultSelected: true,
           allowSwap: true,
+          notes: "",
+          startDate: offer.startDate,
+          endDate: offer.endDate,
+          nameAdditionDeadline: deadline,
+          flightDetails: offer.flightRef?.stock || null,
+          hotelDetails: offer.hotelRef?.stock || null,
+          availableBookings: offer.availableBookings,
         },
       ]);
     }
   };
 
-  const unbundledTotal = form.offers.reduce((sum, o) => sum + Number(o.sellPrice || 0), 0);
+  const unbundledTotal = form.offers.reduce((sum, o) => {
+    if (o.isOptional && o.isDefaultSelected === false) return sum;
+    return sum + Number(o.sellPrice || 0) * Number(o.unitsPerBooking || 1);
+  }, 0);
+
+  const totalCost = form.offers.reduce((sum, o) => {
+    if (o.isOptional && o.isDefaultSelected === false) return sum;
+    return sum + Number(o.costPrice || 0) * Number(o.unitsPerBooking || 1);
+  }, 0);
 
   return (
     <div className="space-y-5">
@@ -71,6 +108,11 @@ export default function OfferSelection({ form, setField }) {
         <span className="text-sm text-slate-500">
           Unbundled total <b className="text-slate-800">{formatCurrency(unbundledTotal)}</b>
         </span>
+        {totalCost > 0 && (
+          <span className="text-sm text-slate-500">
+            Wholesale cost <b className="text-slate-800">{formatCurrency(totalCost)}</b>
+          </span>
+        )}
       </div>
 
       {/* Selected chips */}
@@ -97,10 +139,22 @@ export default function OfferSelection({ form, setField }) {
           <div className="divide-y divide-slate-100">
             {form.offers.map((offer) => (
               <div key={offer.offerId} className="flex flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
-                <span className="flex min-w-0 flex-1 items-center gap-2 text-sm font-semibold text-slate-700">
-                  {offer.itemType === "flight" ? <Ticket size={14} className="shrink-0 text-sky-600" /> : <Hotel size={14} className="shrink-0 text-amber-600" />}
-                  <span className="truncate">{offer.title}</span>
-                </span>
+                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                  <span className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                    {offer.itemType === "flight" ? <Ticket size={14} className="shrink-0 text-sky-600" /> : <Hotel size={14} className="shrink-0 text-amber-600" />}
+                    <span className="truncate">{offer.title}</span>
+                  </span>
+                  {(getOfferDatesSummary(offer) || getOfferDeadline(offer)) && (
+                    <span className="flex flex-wrap items-center gap-x-2 text-[11px] text-slate-500">
+                      {getOfferDatesSummary(offer) && <span>{getOfferDatesSummary(offer)}</span>}
+                      {getOfferDeadline(offer) && (
+                        <span className="text-amber-700 font-medium">
+                          Bookable until {formatDate(getOfferDeadline(offer), { day: "numeric", month: "short", year: "numeric" })}
+                        </span>
+                      )}
+                    </span>
+                  )}
+                </div>
                 <label className="flex items-center gap-2 text-xs font-medium text-slate-600">
                   Units / booking
                   <input
@@ -136,6 +190,26 @@ export default function OfferSelection({ form, setField }) {
                   />
                   Optional
                 </label>
+                {offer.isOptional && (
+                  <label className="flex items-center gap-1.5 text-xs font-medium text-slate-600">
+                    <input
+                      type="checkbox"
+                      checked={offer.isDefaultSelected !== false}
+                      onChange={(event) =>
+                        setField(
+                          "offers",
+                          form.offers.map((o) =>
+                            o.offerId === offer.offerId
+                              ? { ...o, isDefaultSelected: event.target.checked }
+                              : o,
+                          ),
+                        )
+                      }
+                      className="h-4 w-4 rounded border-slate-300 accent-emerald-600"
+                    />
+                    Default selected
+                  </label>
+                )}
                 <label className="flex items-center gap-1.5 text-xs font-medium text-slate-600">
                   <input
                     type="checkbox"
@@ -190,8 +264,10 @@ export default function OfferSelection({ form, setField }) {
       ) : (
         <div className="grid gap-3 md:grid-cols-2">
           {offers.map((offer) => {
-            const offerId = offer._id ?? offer.id;
+            const offerId = String(offer._id ?? offer.id);
             const selected = selectedIds.has(offerId);
+            const datesSummary = getOfferDatesSummary(offer);
+            const deadline = getOfferDeadline(offer);
             return (
               <button
                 key={offerId}
@@ -203,15 +279,27 @@ export default function OfferSelection({ form, setField }) {
                     : "border-slate-200 bg-white hover:border-slate-300"
                 }`}
               >
-                <div className="flex gap-3">
+                <div className="flex gap-3 min-w-0 flex-1">
                   <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${offer.itemType === "flight" ? "bg-sky-50 text-sky-700" : "bg-amber-50 text-amber-700"}`}>
                     {offer.itemType === "flight" ? <Ticket size={17} /> : <Hotel size={17} />}
                   </span>
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <p className="truncate font-bold text-slate-800">{offer.title}</p>
                     <p className="mt-0.5 text-xs text-slate-500">
                       {offer.itemType === "flight" ? "Flight" : "Hotel"} · {offer.destination || "—"}
                     </p>
+                    {datesSummary && (
+                      <p className="mt-1 flex items-center gap-1 text-[11px] font-medium text-slate-600">
+                        <Calendar size={11} className="shrink-0 text-slate-400" />
+                        <span>{datesSummary}</span>
+                      </p>
+                    )}
+                    {deadline && (
+                      <p className="mt-0.5 flex items-center gap-1 text-[11px] font-medium text-amber-700">
+                        <Clock size={11} className="shrink-0 text-amber-500" />
+                        <span>Bookable until {formatDate(deadline, { day: "numeric", month: "short", year: "numeric" })}</span>
+                      </p>
+                    )}
                     <p className="mt-1.5 text-sm font-bold text-slate-900">{formatCurrency(offer.sellPrice)}</p>
                   </div>
                 </div>

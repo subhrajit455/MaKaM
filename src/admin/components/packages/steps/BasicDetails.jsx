@@ -15,15 +15,10 @@ export default function BasicDetails({ form, setField }) {
 
   return (
     <div className="space-y-5">
-      <SectionTitle title="Basic Details" subtitle="Define the package identity, validity and visibility." />
+      <SectionTitle title="Basic Details" subtitle="Define the package identity and visibility. Dates, duration and slots are auto-derived from bundled offers." />
       <div className="grid gap-4 md:grid-cols-2">
         <Input label="Package Title" value={form.title} onChange={(e) => setField("title", e.target.value)} placeholder="Premium Umrah" required />
         <Input label="Destination" value={form.destination} onChange={(e) => setField("destination", e.target.value)} placeholder="Makkah & Madinah" required />
-        <Input label="Duration (days)" type="number" min="1" value={form.durationDays} onChange={(e) => setField("durationDays", Number(e.target.value))} />
-        <Input label="Nights" type="number" min="0" value={form.nights} onChange={(e) => setField("nights", Number(e.target.value))} />
-        <Input label="Validity From" type="date" value={form.validityFrom} onChange={(e) => setField("validityFrom", e.target.value)} />
-        <Input label="Validity To" type="date" value={form.validityTo} onChange={(e) => setField("validityTo", e.target.value)} />
-        <Input label="Available Slots" type="number" min="0" value={form.availableSlots} onChange={(e) => setField("availableSlots", Number(e.target.value))} />
         <label className="block"><span className="mb-1.5 block text-sm font-semibold text-slate-700">Visibility</span><select value={form.visibility} onChange={(e) => setField("visibility", e.target.value)} className="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm"><option value="public">Public</option><option value="private">Private</option></select></label>
         <label className="block"><span className="mb-1.5 block text-sm font-semibold text-slate-700">Status</span><select value={form.status} onChange={(e) => setField("status", e.target.value)} className="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm"><option value="active">Active</option><option value="inactive">Inactive</option></select></label>
       </div>

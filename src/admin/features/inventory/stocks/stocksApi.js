@@ -121,9 +121,9 @@ export const stocksApi = {
 
   // GET /api/v1/crm/stocks/flights
   // Paginated search of block ticket batches.
-  async listFlights({ page = 1, limit = 20, airline = "", origin = "", destination = "", pnr = "", availableOnly = "" } = {}) {
+  async listFlights({ page = 1, limit = 20, airline = "", origin = "", destination = "", pnr = "", availableOnly = "", isActive = "" } = {}) {
     const { data } = await apiClient.get(`${ROOT}/flights`, {
-      params: qs({ page, limit, airline, origin, destination, pnr, availableOnly }),
+      params: qs({ page, limit, airline, origin, destination, pnr, availableOnly, isActive }),
     });
     const result = parseList(data, { page, limit });
     return { ...result, stocks: mapFlightRows(result.stocks) };
@@ -136,11 +136,20 @@ export const stocksApi = {
     return parseOne(data, "stock");
   },
 
+  // DELETE /api/v1/crm/stocks/flights/:id
+  // Delete flight stock (supports ?dryRun=true for deletion impact preview)
+  async deleteFlight(id, { dryRun = false } = {}) {
+    const { data } = await apiClient.delete(`${ROOT}/flights/${id}`, {
+      params: dryRun ? { dryRun: "true" } : {},
+    });
+    return unwrapBody(data);
+  },
+
   // GET /api/v1/crm/stocks/hotels
   // Paginated list of contracted hotel room blocks.
-  async listHotels({ page = 1, limit = 20, destination = "", availableOnly = "" } = {}) {
+  async listHotels({ page = 1, limit = 20, destination = "", availableOnly = "", isActive = "" } = {}) {
     const { data } = await apiClient.get(`${ROOT}/hotels`, {
-      params: qs({ page, limit, destination, availableOnly }),
+      params: qs({ page, limit, destination, availableOnly, isActive }),
     });
     const result = parseList(data, { page, limit });
     return { ...result, stocks: mapHotelRows(result.stocks) };
@@ -151,6 +160,15 @@ export const stocksApi = {
   async createHotel(payload) {
     const { data } = await apiClient.post(`${ROOT}/hotels`, payload);
     return parseOne(data, "stock");
+  },
+
+  // DELETE /api/v1/crm/stocks/hotels/:id
+  // Delete hotel stock (supports ?dryRun=true for deletion impact preview)
+  async deleteHotel(id, { dryRun = false } = {}) {
+    const { data } = await apiClient.delete(`${ROOT}/hotels/${id}`, {
+      params: dryRun ? { dryRun: "true" } : {},
+    });
+    return unwrapBody(data);
   },
 
   // GET /api/v1/crm/stocks/flights/:id or /api/v1/stock/flight/:id
@@ -255,9 +273,9 @@ const HOTELS_ROOT = "/api/v1/crm/hotels";
 
 export const hotelPropertiesApi = {
   // GET /api/v1/crm/hotels
-  async list({ page = 1, limit = 50 } = {}) {
+  async list({ page = 1, limit = 50, search } = {}) {
     const { data } = await apiClient.get(HOTELS_ROOT, {
-      params: qs({ page, limit }),
+      params: qs({ page, limit, search }),
     });
     const payload = unwrapBody(data);
     const hotels = Array.isArray(payload)
